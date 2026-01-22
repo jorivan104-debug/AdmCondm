@@ -1,0 +1,43 @@
+═══════════════════════════════════════════════════════════════
+  INSTRUCCIONES PARA SUBIR A GITHUB
+═══════════════════════════════════════════════════════════════
+
+✅ El repositorio Git está inicializado y el commit inicial está listo.
+
+📋 PASOS PARA PUBLICAR EN GITHUB:
+
+1. CREAR REPOSITORIO EN GITHUB:
+   - Ve a: https://github.com/new
+   - Nombre: AdmCondm (o el que prefieras)
+   - NO marques "Add README", ".gitignore" ni "license"
+   - Click en "Create repository"
+
+2. CONECTAR Y SUBIR EL CÓDIGO:
+   Ejecuta estos comandos (reemplaza TU_USUARIO con tu usuario de GitHub):
+
+   git branch -M main
+   git remote add origin https://github.com/TU_USUARIO/AdmCondm.git
+   git push -u origin main
+
+3. ACTIVAR GITHUB PAGES:
+   - Ve a Settings → Pages en tu repositorio
+   - Source: Selecciona "GitHub Actions"
+   - Guarda
+
+4. CONFIGURAR URL DEL BACKEND (Opcional):
+   - Settings → Secrets and variables → Actions
+   - New repository secret
+   - Name: VITE_API_URL
+   - Value: https://tu-backend-url.com/api
+
+5. VERIFICAR:
+   - Ve a la pestaña "Actions" para ver el despliegue
+   - Tu sitio estará en: https://TU_USUARIO.github.io/AdmCondm/
+
+═══════════════════════════════════════════════════════════════
+
+📚 Para más detalles, consulta:
+   - GITHUB_SETUP.md (instrucciones detalladas)
+   - DEPLOYMENT.md (guía completa de despliegue)
+
+═══════════════════════════════════════════════════════════════
