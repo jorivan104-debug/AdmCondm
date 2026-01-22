@@ -6,6 +6,7 @@ from app.models.condominium import Condominium
 
 
 class Role:
+    SUPER_ADMIN = "super_admin"
     ADMIN = "admin"
     ACCOUNTANT = "accountant"
     ACCOUNTING_ASSISTANT = "accounting_assistant"
@@ -56,22 +57,34 @@ def require_condominium_access(func):
     return wrapper
 
 
+def is_super_admin(user: User) -> bool:
+    """Check if user is super admin"""
+    user_roles = [ur.role.name for ur in user.user_roles]
+    return Role.SUPER_ADMIN in user_roles
+
+
+def can_manage_users(user: User) -> bool:
+    """Check if user can manage other users"""
+    user_roles = [ur.role.name for ur in user.user_roles]
+    return Role.SUPER_ADMIN in user_roles
+
+
 def can_access_accounting(user: User) -> bool:
     """Check if user can access accounting module"""
     user_roles = [ur.role.name for ur in user.user_roles]
     return any(role in user_roles for role in [
-        Role.ADMIN, Role.ACCOUNTANT, Role.ACCOUNTING_ASSISTANT
+        Role.SUPER_ADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.ACCOUNTING_ASSISTANT
     ])
 
 
 def can_manage_bank_reconciliation(user: User) -> bool:
     """Check if user can manage bank reconciliation"""
     user_roles = [ur.role.name for ur in user.user_roles]
-    return any(role in user_roles for role in [Role.ADMIN, Role.ACCOUNTANT])
+    return any(role in user_roles for role in [Role.SUPER_ADMIN, Role.ADMIN, Role.ACCOUNTANT])
 
 
 def can_manage_budgets(user: User) -> bool:
     """Check if user can manage budgets"""
     user_roles = [ur.role.name for ur in user.user_roles]
-    return any(role in user_roles for role in [Role.ADMIN, Role.ACCOUNTANT])
+    return any(role in user_roles for role in [Role.SUPER_ADMIN, Role.ADMIN, Role.ACCOUNTANT])
 

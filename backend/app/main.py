@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.core.database import engine, Base
 from app.core.config import settings
-from app.api import auth, condominiums, blocks, residents, properties, accounting, space_requests, meetings, documents, notifications, document_attachments
+from app.api import auth, condominiums, blocks, residents, properties, accounting, space_requests, meetings, documents, notifications, document_attachments, users
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -60,6 +60,7 @@ app.include_router(meetings.router, prefix="/api/meetings", tags=["Meetings"])
 app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 app.include_router(document_attachments.router, prefix="/api/document-attachments", tags=["Document Attachments"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
+app.include_router(users.router, prefix="/api/users", tags=["Users Management"])
 
 
 @app.get("/")

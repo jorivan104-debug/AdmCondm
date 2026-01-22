@@ -27,7 +27,8 @@ def init_database():
         # Initialize roles
         print("\nInitializing roles...")
         roles = [
-            {"name": "admin", "description": "Administrator with full access"},
+            {"name": "super_admin", "description": "Super Administrator with full system access and user management"},
+            {"name": "admin", "description": "Administrator with full access to assigned condominiums"},
             {"name": "accountant", "description": "Accountant with full accounting access"},
             {"name": "accounting_assistant", "description": "Accounting assistant with limited accounting access"},
             {"name": "user", "description": "Regular user with read access and space request management"},
