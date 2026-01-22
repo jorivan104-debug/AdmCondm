@@ -39,7 +39,8 @@ jobs:
       - name: Build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL || '' }}
-          GITHUB_PAGES: true
+          GITHUB_PAGES: 'true'
+          GITHUB_ACTIONS: 'true'
         run: npm run build
 
       - name: Setup Pages
