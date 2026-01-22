@@ -1,0 +1,19 @@
+{
+  "name": "admcondm-desktop",
+  "version": "1.0.0",
+  "description": "Desktop app for Sistema de Gestión Condominial",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac"
+  },
+  "dependencies": {
+    "electron": "^27.0.0"
+  },
+  "devDependencies": {
+    "electron-builder": "^24.6.4"
+  }
+}
+
