@@ -1,24 +1,37 @@
 import { create } from 'zustand'
 import api from '../services/api'
 
+interface Role {
+  id: number
+  name: string
+  description: string | null
+}
+
 interface User {
   id: number
   email: string
   full_name: string | null
   is_active: boolean
+  roles?: Role[]
 }
 
 interface AuthState {
   user: User | null
   isAuthenticated: boolean
+  isSuperAdmin: () => boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => void
   checkAuth: () => Promise<void>
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
+
+  isSuperAdmin: () => {
+    const user = get().user
+    return user?.roles?.some(role => role.name === 'super_admin') || false
+  },
 
   login: async (email: string, password: string) => {
     try {
@@ -37,9 +50,20 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Step 3: Get user info (this will use the token from localStorage via interceptor)
       const userResponse = await api.get('/auth/me')
       
-      // Step 4: Update state
+      // Step 4: Get user details with roles if available
+      let userData = userResponse.data
+      try {
+        // Try to get full user details with roles
+        const userDetails = await api.get(`/users/${userResponse.data.id}`)
+        userData = userDetails.data
+      } catch (e) {
+        // If user doesn't have permission, use basic user data
+        console.log('Could not fetch user details, using basic info')
+      }
+      
+      // Step 5: Update state
       set({ 
-        user: userResponse.data, 
+        user: userData, 
         isAuthenticated: true 
       })
     } catch (error: any) {

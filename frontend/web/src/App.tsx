@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage'
 import CondominiumSelectionPage from './pages/CondominiumSelectionPage'
 import CondominiumPage from './pages/CondominiumPage'
 import DashboardPage from './pages/DashboardPage'
+import UsersManagementPage from './pages/UsersManagementPage'
 import Layout from './components/Layout'
 
 function App() {
@@ -55,6 +56,7 @@ function App() {
                 <Layout>
                   <Routes>
                     <Route path="/dashboard" element={<DashboardPage />} />
+                    <Route path="/users" element={<UsersManagementPage />} />
                     <Route path="/" element={<Navigate to={`/condominium/${selectedCondominiumId}`} />} />
                     <Route path="*" element={<Navigate to={`/condominium/${selectedCondominiumId}`} />} />
                   </Routes>
