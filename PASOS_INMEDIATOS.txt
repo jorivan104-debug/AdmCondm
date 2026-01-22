@@ -1,0 +1,46 @@
+═══════════════════════════════════════════════════════════
+  PASOS INMEDIATOS PARA SOLUCIONAR EL 404
+═══════════════════════════════════════════════════════════
+
+1. VERIFICAR QUE EL REPOSITORIO EXISTE
+   👉 https://github.com/jorivan104-debug/AdmCondm
+   
+   Si no existe, créalo en: https://github.com/new
+   - Nombre: AdmCondm
+   - NO marques README/gitignore/license
+
+2. SUBIR EL CÓDIGO
+   Ejecuta en PowerShell:
+   
+   git push -u origin main
+   
+   Si pide autenticación:
+   - Usuario: jorivan104-debug
+   - Contraseña: Usa un Personal Access Token
+     (Crear en: https://github.com/settings/tokens)
+
+3. ACTIVAR GITHUB PAGES (MUY IMPORTANTE)
+   👉 https://github.com/jorivan104-debug/AdmCondm/settings/pages
+   
+   - Source: Selecciona "GitHub Actions"
+   - Click en "Save"
+
+4. FORZAR EJECUCIÓN DEL WORKFLOW
+   👉 https://github.com/jorivan104-debug/AdmCondm/actions
+   
+   - Click en "Deploy Frontend to GitHub Pages"
+   - Click en "Run workflow"
+   - Selecciona branch: main
+   - Click en "Run workflow"
+
+5. ESPERAR 2-5 MINUTOS
+   - Ve a la pestaña "Actions"
+   - Espera a que termine (check verde ✅)
+
+6. VERIFICAR
+   Tu sitio estará en:
+   👉 https://jorivan104-debug.github.io/AdmCondm/
+   
+   ⚠️ IMPORTANTE: La URL debe incluir /AdmCondm/ al final
+
+═══════════════════════════════════════════════════════════
