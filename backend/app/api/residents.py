@@ -47,9 +47,9 @@ async def create_resident(
             detail="Access denied to this condominium"
         )
     
-    # Check if user has admin role
-    user_roles = [ur.role.name for ur in current_user.user_roles]
-    if Role.ADMIN not in user_roles:
+    # Check if user has admin or super_admin role
+    user_roles = [ur.role.name for ur in (current_user.user_roles or []) if getattr(ur, 'role', None)]
+    if Role.ADMIN not in user_roles and Role.SUPER_ADMIN not in user_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can create residents"
@@ -91,9 +91,9 @@ async def create_resident_complete(
             detail="Access denied to this condominium"
         )
     
-    # Check if user has admin role
-    user_roles = [ur.role.name for ur in current_user.user_roles]
-    if Role.ADMIN not in user_roles:
+    # Check if user has admin or super_admin role
+    user_roles = [ur.role.name for ur in (current_user.user_roles or []) if getattr(ur, 'role', None)]
+    if Role.ADMIN not in user_roles and Role.SUPER_ADMIN not in user_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can create residents"
@@ -191,9 +191,9 @@ async def update_resident(
             detail="Access denied to this resident"
         )
     
-    # Check if user has admin role
-    user_roles = [ur.role.name for ur in current_user.user_roles]
-    if Role.ADMIN not in user_roles:
+    # Check if user has admin or super_admin role
+    user_roles = [ur.role.name for ur in (current_user.user_roles or []) if getattr(ur, 'role', None)]
+    if Role.ADMIN not in user_roles and Role.SUPER_ADMIN not in user_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can update residents"
@@ -229,9 +229,9 @@ async def delete_resident(
             detail="Access denied to this resident"
         )
     
-    # Check if user has admin role
-    user_roles = [ur.role.name for ur in current_user.user_roles]
-    if Role.ADMIN not in user_roles:
+    # Check if user has admin or super_admin role
+    user_roles = [ur.role.name for ur in (current_user.user_roles or []) if getattr(ur, 'role', None)]
+    if Role.ADMIN not in user_roles and Role.SUPER_ADMIN not in user_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can delete residents"

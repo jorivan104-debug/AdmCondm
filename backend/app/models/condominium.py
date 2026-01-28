@@ -25,6 +25,9 @@ class Condominium(Base):
     landscape_image_url = Column(String(500), nullable=True)  # URL de imagen paisajística
     description = Column(Text, nullable=True)  # Descripción adicional
     total_units = Column(Integer, nullable=True)  # Total de unidades
+    # Configuración valor de administración: 'global' | 'segmentado'
+    administration_value_type = Column(String(20), nullable=True, default="global")
+    administration_value_cop = Column(Integer, nullable=True)  # Valor en COP cuando type=global
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -38,6 +41,8 @@ class Condominium(Base):
     budgets = relationship("Budget", back_populates="condominium", cascade="all, delete-orphan")
     space_requests = relationship("SpaceRequest", back_populates="condominium", cascade="all, delete-orphan")
     meetings = relationship("Meeting", back_populates="condominium", cascade="all, delete-orphan")
+    assemblies = relationship("Assembly", back_populates="condominium", cascade="all, delete-orphan")
+    administration_invoices = relationship("AdministrationInvoice", back_populates="condominium", cascade="all, delete-orphan")
     documents = relationship("Document", back_populates="condominium", cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="condominium", cascade="all, delete-orphan")
 

@@ -40,10 +40,10 @@ async def create_condominium(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new condominium"""
-    # Check if user has admin role
-    from app.core.permissions import Role
+    # Check if user has admin or super_admin role
+    from app.core.permissions import Role, is_super_admin
     user_roles = [ur.role.name for ur in current_user.user_roles]
-    if Role.ADMIN not in user_roles:
+    if not (is_super_admin(current_user) or Role.ADMIN in user_roles):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can create condominiums"
@@ -184,10 +184,10 @@ async def get_condominiums(
     current_user: User = Depends(get_current_user)
 ):
     """Get all condominiums for current user"""
-    # Check if user is admin - admins can see all condominiums
-    from app.core.permissions import require_roles
+    # Check if user is admin or super_admin - they can see all condominiums
+    from app.core.permissions import is_super_admin
     user_roles = [ur.role.name for ur in current_user.user_roles]
-    is_admin = "admin" in user_roles
+    is_admin = is_super_admin(current_user) or "admin" in user_roles
     
     if is_admin:
         # Admins can see all condominiums
@@ -239,10 +239,10 @@ async def update_condominium(
             detail="Access denied to this condominium"
         )
     
-    # Check if user has admin role
-    from app.core.permissions import Role
+    # Check if user has admin or super_admin role
+    from app.core.permissions import Role, is_super_admin
     user_roles = [ur.role.name for ur in current_user.user_roles]
-    if Role.ADMIN not in user_roles:
+    if not (is_super_admin(current_user) or Role.ADMIN in user_roles):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can update condominiums"
@@ -278,10 +278,10 @@ async def delete_condominium(
             detail="Access denied to this condominium"
         )
     
-    # Check if user has admin role
-    from app.core.permissions import Role
+    # Check if user has admin or super_admin role
+    from app.core.permissions import Role, is_super_admin
     user_roles = [ur.role.name for ur in current_user.user_roles]
-    if Role.ADMIN not in user_roles:
+    if not (is_super_admin(current_user) or Role.ADMIN in user_roles):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can delete condominiums"

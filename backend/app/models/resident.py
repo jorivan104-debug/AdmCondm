@@ -24,4 +24,6 @@ class Resident(Base):
     property_residents = relationship("PropertyResident", back_populates="resident", cascade="all, delete-orphan")
     space_requests = relationship("SpaceRequest", back_populates="resident", cascade="all, delete-orphan")
     meeting_attendances = relationship("MeetingAttendance", back_populates="resident", cascade="all, delete-orphan")
+    vote_records = relationship("VoteRecord", back_populates="resident", cascade="all, delete-orphan")
+    assembly_attendances = relationship("AssemblyAttendance", back_populates="resident", cascade="all, delete-orphan")
 

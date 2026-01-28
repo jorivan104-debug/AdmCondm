@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
@@ -24,6 +25,7 @@ from app.schemas.accounting import (
     BankReconciliationResponse
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -66,23 +68,32 @@ async def get_transactions(
     current_user: User = Depends(get_current_user)
 ):
     """Get all transactions for a condominium"""
-    if not check_condominium_access(db, current_user, condominium_id):
+    try:
+        if not check_condominium_access(db, current_user, condominium_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to this condominium"
+            )
+
+        if not can_access_accounting(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to accounting module"
+            )
+
+        transactions = db.query(AccountingTransaction).filter(
+            AccountingTransaction.condominium_id == condominium_id
+        ).all()
+
+        return [AccountingTransactionResponse.model_validate(t) for t in transactions]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("get_transactions failed: condominium_id=%s", condominium_id)
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied to this condominium"
-        )
-    
-    if not can_access_accounting(current_user):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied to accounting module"
-        )
-    
-    transactions = db.query(AccountingTransaction).filter(
-        AccountingTransaction.condominium_id == condominium_id
-    ).all()
-    
-    return transactions
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al cargar las transacciones",
+        ) from e
 
 
 @router.put("/transactions/{transaction_id}", response_model=AccountingTransactionResponse)

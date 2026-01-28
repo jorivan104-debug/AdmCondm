@@ -54,6 +54,8 @@ interface ResidentAssignment {
 
 interface PropertiesListProps {
   condominiumId: number
+  /** Si se define, solo se muestran/permite ver estas unidades (titular/residente). [] = ninguna. */
+  restrictToPropertyIds?: number[]
 }
 
 // Función para traducir tipos de unidad al español
@@ -68,8 +70,15 @@ const getPropertyTypeLabel = (type: string): string => {
   return typeMap[type] || type
 }
 
-export default function PropertiesList({ condominiumId }: PropertiesListProps) {
+export default function PropertiesList({ condominiumId, restrictToPropertyIds }: PropertiesListProps) {
   const [properties, setProperties] = useState<Property[]>([])
+  const visibleProperties =
+    restrictToPropertyIds === undefined
+      ? properties
+      : restrictToPropertyIds.length === 0
+        ? []
+        : properties.filter((p) => restrictToPropertyIds.includes(p.id))
+  const isRestricted = restrictToPropertyIds !== undefined
   const [residents, setResidents] = useState<Resident[]>([])
   const [blocks, setBlocks] = useState<Block[]>([])
   const [loading, setLoading] = useState(true)
@@ -451,22 +460,25 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
   }
 
   // Filter properties by block
+  const baseProperties = restrictToPropertyIds === undefined ? properties : visibleProperties
   const filteredProperties = selectedBlockFilter
-    ? properties.filter(p => p.block_id === selectedBlockFilter)
-    : properties
+    ? baseProperties.filter(p => p.block_id === selectedBlockFilter)
+    : baseProperties
 
   return (
     <div className="p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Unidades del Condominio</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Unidades del Condominio</h2>
           <p className="text-sm text-gray-600 mt-1">Lista de todas las unidades (propiedades) del condominio</p>
         </div>
         <div className="flex items-center space-x-3">
+          {!isRestricted && (
+          <>
           {/* Blocks management button */}
           <button
             onClick={() => setShowBlocksForm(!showBlocksForm)}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -474,13 +486,13 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
             Bloques
           </button>
           {/* View mode toggle */}
-          <div className="flex items-center border border-gray-300 rounded-md">
+          <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-md">
             <button
               onClick={() => setViewMode('grid')}
               className={`px-3 py-2 text-sm font-medium ${
                 viewMode === 'grid'
                   ? 'bg-indigo-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
+                  : 'bg-white text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700'
               } rounded-l-md`}
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -492,7 +504,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
               className={`px-3 py-2 text-sm font-medium ${
                 viewMode === 'list'
                   ? 'bg-indigo-600 text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
+                  : 'bg-white text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700'
               } rounded-r-md`}
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -509,14 +521,16 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
             </svg>
             Nueva Unidad
           </button>
+          </>
+          )}
         </div>
       </div>
 
       {/* Blocks management form */}
-      {showBlocksForm && (
-        <div className="mb-6 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+      {!isRestricted && showBlocksForm && (
+        <div className="mb-6 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">
               {editingBlockId ? 'Editar Bloque' : 'Gestionar Bloques'}
             </h3>
             <button
@@ -535,7 +549,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
           <form onSubmit={editingBlockId ? handleUpdateBlock : handleCreateBlock} className="mb-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                   Nombre del Bloque *
                 </label>
                 <input
@@ -543,19 +557,19 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                   required
                   value={blockFormData.name}
                   onChange={(e) => setBlockFormData({ ...blockFormData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Ej: Bloque A, Manzana 1"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                   Descripción
                 </label>
                 <input
                   type="text"
                   value={blockFormData.description}
                   onChange={(e) => setBlockFormData({ ...blockFormData, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Descripción opcional"
                 />
               </div>
@@ -571,7 +585,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                   <button
                     type="button"
                     onClick={cancelEditBlock}
-                    className="ml-2 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="ml-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700/50 dark:hover:bg-gray-700"
                   >
                     Cancelar
                   </button>
@@ -581,17 +595,17 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
           </form>
 
           <div className="mt-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Bloques existentes</h4>
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Bloques existentes</h4>
             {blocks.length === 0 ? (
               <p className="text-sm text-gray-500 italic">No hay bloques registrados</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {blocks.map((block) => (
-                  <div key={block.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-md">
+                  <div key={block.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-md">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{block.name}</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 dark:text-gray-100">{block.name}</p>
                       {block.description && (
-                        <p className="text-xs text-gray-500 mt-1">{block.description}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-200 mt-1">{block.description}</p>
                       )}
                     </div>
                     <div className="flex items-center space-x-2 ml-3">
@@ -622,15 +636,15 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
 
           {deletingBlockId && (
             <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Confirmar eliminación</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 border border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Confirmar eliminación</h3>
                 <p className="text-sm text-gray-500 mb-6">
                   ¿Estás seguro de que deseas eliminar este bloque? Esta acción no se puede deshacer.
                 </p>
                 <div className="flex justify-end space-x-3">
                   <button
                     onClick={() => setDeletingBlockId(null)}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700/50 dark:hover:bg-gray-700"
                   >
                     Cancelar
                   </button>
@@ -647,16 +661,16 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
         </div>
       )}
 
-      {/* Filter by block (only in list view) */}
-      {viewMode === 'list' && blocks.length > 0 && (
+      {/* Filter by block (only in list view; titular/residente no ven filtro de bloque) */}
+      {viewMode === 'list' && blocks.length > 0 && !isRestricted && (
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">
             Filtrar por Bloque
           </label>
           <select
             value={selectedBlockFilter || ''}
             onChange={(e) => setSelectedBlockFilter(e.target.value ? parseInt(e.target.value) : null)}
-            className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full md:w-64 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="">Todos los bloques</option>
             {blocks.map((block) => (
@@ -675,9 +689,9 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
       )}
 
       {filteredProperties.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
+        <div className="text-center py-12 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
           <svg
-            className="mx-auto h-12 w-12 text-gray-400"
+            className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -689,9 +703,13 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
               d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
             />
           </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No hay unidades</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {selectedBlockFilter ? 'No hay unidades en el bloque seleccionado.' : 'Comienza agregando una nueva unidad al condominio.'}
+          <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No hay unidades</h3>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-200">
+            {restrictToPropertyIds?.length === 0
+              ? 'No tiene unidades asociadas.'
+              : selectedBlockFilter
+                ? 'No hay unidades en el bloque seleccionado.'
+                : 'Comienza agregando una nueva unidad al condominio.'}
           </p>
         </div>
       ) : viewMode === 'grid' ? (
@@ -699,7 +717,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
           {filteredProperties.map((property) => (
             <div
               key={property.id}
-              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
             >
               {property.photo_url && (
                 <img
@@ -710,13 +728,13 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
               )}
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900">{property.code}</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 dark:text-gray-100">{property.code}</h3>
                   {property.block && (
                     <p className="text-sm text-gray-600 mt-1">Bloque: {property.block.name}</p>
                   )}
                   <p className="text-sm text-gray-600 mt-1">{getPropertyTypeLabel(property.type)}</p>
                   {property.property_residents?.find(pr => pr.ownership_percentage === 100.0)?.resident && (
-                    <p className="text-sm text-gray-700 mt-1 font-medium">
+                    <p className="text-sm text-gray-700 dark:text-gray-100 mt-1 font-medium">
                       Titular: {property.property_residents.find(pr => pr.ownership_percentage === 100.0)?.resident?.full_name}
                     </p>
                   )}
@@ -741,22 +759,22 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
           ))}
         </div>
       ) : (
-        <div className="bg-white shadow-sm rounded-lg overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700/50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unidad</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bloque</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Titular</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Área</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">Unidad</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">Bloque</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">Tipo</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">Titular</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">Área</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">Descripción</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
               {filteredProperties.map((property) => (
-                <tr key={property.id} className="hover:bg-gray-50">
+                <tr key={property.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       {property.photo_url && (
@@ -766,18 +784,18 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                           className="h-10 w-10 rounded-lg object-cover mr-3"
                         />
                       )}
-                      <div className="text-sm font-medium text-gray-900">{property.code}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 dark:text-gray-100">{property.code}</div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{property.block?.name || '-'}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{property.block?.name || '-'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
                       {getPropertyTypeLabel(property.type)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                     {property.property_residents?.find(pr => pr.ownership_percentage === 100.0)?.resident?.full_name || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -804,9 +822,9 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
       {/* Modal de creación */}
       {showCreateForm && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-white">
+          <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-full max-w-3xl shadow-lg rounded-md bg-white dark:bg-gray-800">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-bold text-gray-900">Nueva Unidad</h3>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Nueva Unidad</h3>
               <button
                 onClick={() => setShowCreateForm(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -821,7 +839,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Número de unidad */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                     Número de Unidad *
                   </label>
                   <input
@@ -829,20 +847,20 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                     required
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="Ej: 101, A-5, Local 10"
                   />
                 </div>
 
                 {/* Bloque o Manzana */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                     Bloque o Manzana
                   </label>
                   <select
                     value={formData.block_id}
                     onChange={(e) => setFormData({ ...formData, block_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">Sin bloque</option>
                     {blocks.map((block) => (
@@ -855,14 +873,14 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
 
                 {/* Tipo */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                     Tipo *
                   </label>
                   <select
                     required
                     value={formData.type}
                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="apartment">Apartamento</option>
                     <option value="house">Casa</option>
@@ -874,7 +892,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
 
                 {/* Área */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                     Área (m²)
                   </label>
                   <input
@@ -882,7 +900,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                     step="0.01"
                     value={formData.area}
                     onChange={(e) => setFormData({ ...formData, area: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="Ej: 75.5"
                   />
                 </div>
@@ -890,28 +908,28 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
 
               {/* Descripción */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                   Descripción
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Descripción adicional de la unidad..."
                 />
               </div>
 
               {/* Foto */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                   Foto
                 </label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setFormData({ ...formData, photo: e.target.files?.[0] || null })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 {formData.photo && (
                   <p className="mt-1 text-sm text-gray-500">{formData.photo.name}</p>
@@ -939,7 +957,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                 {/* Formulario de creación de residente */}
                 {showResidentForm && (
                   <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-md">
-                    <h4 className="text-sm font-medium text-gray-900 mb-3">Nuevo Residente</h4>
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 dark:text-gray-100 mb-3">Nuevo Residente</h4>
                     <form onSubmit={handleCreateResident} className="space-y-3">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
@@ -951,7 +969,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                             required
                             value={residentFormData.full_name}
                             onChange={(e) => setResidentFormData({ ...residentFormData, full_name: e.target.value })}
-                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
                             placeholder="Nombre completo"
                           />
                         </div>
@@ -963,7 +981,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                             type="email"
                             value={residentFormData.email}
                             onChange={(e) => setResidentFormData({ ...residentFormData, email: e.target.value })}
-                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
                             placeholder="email@ejemplo.com"
                           />
                         </div>
@@ -975,7 +993,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                             type="tel"
                             value={residentFormData.phone}
                             onChange={(e) => setResidentFormData({ ...residentFormData, phone: e.target.value })}
-                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
                             placeholder="+57 300 123 4567"
                           />
                         </div>
@@ -986,7 +1004,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                           <select
                             value={residentFormData.document_type}
                             onChange={(e) => setResidentFormData({ ...residentFormData, document_type: e.target.value })}
-                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           >
                             <option value="">Seleccionar</option>
                             <option value="CC">Cédula de Ciudadanía</option>
@@ -1003,7 +1021,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                             type="text"
                             value={residentFormData.document_number}
                             onChange={(e) => setResidentFormData({ ...residentFormData, document_number: e.target.value })}
-                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
                             placeholder="1234567890"
                           />
                         </div>
@@ -1015,7 +1033,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                             type="file"
                             accept="image/*"
                             onChange={(e) => setResidentFormData({ ...residentFormData, photo: e.target.files?.[0] || null })}
-                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                         </div>
                       </div>
@@ -1023,7 +1041,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                         <button
                           type="button"
                           onClick={() => setShowResidentForm(false)}
-                          className="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                          className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700/50 dark:hover:bg-gray-700"
                           disabled={creatingResident}
                         >
                           Cancelar
@@ -1093,7 +1111,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                 <button
                   type="button"
                   onClick={() => setShowCreateForm(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700/50 dark:hover:bg-gray-700"
                   disabled={submitting}
                 >
                   Cancelar
@@ -1114,9 +1132,9 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
       {/* Modal de edición */}
       {editingPropertyId && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-white">
+          <div className="relative top-20 mx-auto p-5 border border-gray-200 dark:border-gray-700 w-full max-w-3xl shadow-lg rounded-md bg-white dark:bg-gray-800">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-bold text-gray-900">Editar Unidad</h3>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Editar Unidad</h3>
               <button
                 onClick={cancelEditProperty}
                 className="text-gray-400 hover:text-gray-600"
@@ -1131,7 +1149,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Número de unidad */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                     Número de Unidad *
                   </label>
                   <input
@@ -1139,20 +1157,20 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                     required
                     value={editFormData.code}
                     onChange={(e) => setEditFormData({ ...editFormData, code: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="Ej: 101, A-5, Local 10"
                   />
                 </div>
 
                 {/* Bloque o Manzana */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                     Bloque o Manzana
                   </label>
                   <select
                     value={editFormData.block_id}
                     onChange={(e) => setEditFormData({ ...editFormData, block_id: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="">Sin bloque</option>
                     {blocks.map((block) => (
@@ -1165,14 +1183,14 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
 
                 {/* Tipo */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                     Tipo *
                   </label>
                   <select
                     required
                     value={editFormData.type}
                     onChange={(e) => setEditFormData({ ...editFormData, type: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value="apartment">Apartamento</option>
                     <option value="house">Casa</option>
@@ -1184,7 +1202,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
 
                 {/* Área */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                     Área (m²)
                   </label>
                   <input
@@ -1192,7 +1210,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                     step="0.01"
                     value={editFormData.area}
                     onChange={(e) => setEditFormData({ ...editFormData, area: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="Ej: 75.5"
                   />
                 </div>
@@ -1200,28 +1218,28 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
 
               {/* Descripción */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                   Descripción
                 </label>
                 <textarea
                   value={editFormData.description}
                   onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Descripción adicional de la unidad..."
                 />
               </div>
 
               {/* Foto */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                   Foto (dejar vacío para mantener la actual)
                 </label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setEditFormData({ ...editFormData, photo: e.target.files?.[0] || null })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 {editFormData.photo && (
                   <p className="mt-1 text-sm text-gray-500">{editFormData.photo.name}</p>
@@ -1230,7 +1248,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
 
               {/* Residentes */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">
                   Residentes que Habitan
                 </label>
                 {residents.length === 0 ? (
@@ -1307,7 +1325,7 @@ export default function PropertiesList({ condominiumId }: PropertiesListProps) {
                 <button
                   type="button"
                   onClick={cancelEditProperty}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700/50 dark:hover:bg-gray-700"
                   disabled={updating}
                 >
                   Cancelar

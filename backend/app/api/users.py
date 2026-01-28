@@ -7,6 +7,7 @@ from app.core.permissions import can_manage_users, is_super_admin
 from app.models.user import User, UserRole, UserCondominium
 from app.models.role import Role
 from app.models.condominium import Condominium
+from app.models.resident import Resident
 from app.schemas.user import (
     UserCreateAdmin,
     UserUpdateAdmin,
@@ -40,11 +41,15 @@ async def get_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get all users (super admin only)"""
-    if not can_manage_users(current_user):
+    """Get all users (super admin or admin only)"""
+    from app.core.permissions import is_super_admin
+    user_roles = [ur.role.name for ur in current_user.user_roles]
+    is_admin = is_super_admin(current_user) or "admin" in user_roles
+    
+    if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only super administrators can view all users"
+            detail="Only administrators can view all users"
         )
     
     users = db.query(User).offset(skip).limit(limit).all()
@@ -70,11 +75,15 @@ async def get_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get user by ID (super admin only)"""
-    if not can_manage_users(current_user):
+    """Get user by ID (super admin or admin only)"""
+    from app.core.permissions import is_super_admin
+    user_roles = [ur.role.name for ur in current_user.user_roles]
+    is_admin = is_super_admin(current_user) or "admin" in user_roles
+    
+    if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only super administrators can view user details"
+            detail="Only administrators can view user details"
         )
     
     user = db.query(User).filter(User.id == user_id).first()
@@ -92,7 +101,8 @@ async def get_user(
         "created_at": user.created_at,
         "updated_at": user.updated_at,
         "roles": get_user_roles(db, user.id),
-        "condominiums": get_user_condominiums(db, user.id)
+        "condominiums": get_user_condominiums(db, user.id),
+        "needs_password_change": not bool(user.hashed_password)
     }
 
 
@@ -102,11 +112,15 @@ async def create_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Create a new user (super admin only)"""
-    if not can_manage_users(current_user):
+    """Create a new user (super admin or admin only)"""
+    from app.core.permissions import is_super_admin
+    user_roles = [ur.role.name for ur in current_user.user_roles]
+    is_admin = is_super_admin(current_user) or "admin" in user_roles
+    
+    if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only super administrators can create users"
+            detail="Only administrators can create users"
         )
     
     # Check if user already exists
@@ -117,35 +131,72 @@ async def create_user(
             detail="Email already registered"
         )
     
-    # Create user
-    hashed_password = get_password_hash(user_data.password)
-    user = User(
-        email=user_data.email,
-        hashed_password=hashed_password,
-        full_name=user_data.full_name,
-        is_active=True
-    )
-    db.add(user)
-    db.flush()
-    
-    # Assign roles
-    if user_data.role_ids:
-        for role_id in user_data.role_ids:
-            role = db.query(Role).filter(Role.id == role_id).first()
-            if role:
-                user_role = UserRole(user_id=user.id, role_id=role_id)
-                db.add(user_role)
-    
-    # Assign condominiums
-    if user_data.condominium_ids:
-        for condominium_id in user_data.condominium_ids:
-            condominium = db.query(Condominium).filter(Condominium.id == condominium_id).first()
-            if condominium:
-                user_condo = UserCondominium(user_id=user.id, condominium_id=condominium_id)
-                db.add(user_condo)
-    
-    db.commit()
-    db.refresh(user)
+    try:
+        # Create user (with or without password)
+        hashed_password = None
+        if user_data.password and user_data.password.strip():
+            hashed_password = get_password_hash(user_data.password)
+        
+        user = User(
+            email=user_data.email,
+            hashed_password=hashed_password,  # Can be None for new users
+            full_name=user_data.full_name,
+            is_active=True
+        )
+        db.add(user)
+        db.flush()
+        
+        # Assign roles
+        if user_data.role_ids:
+            for role_id in user_data.role_ids:
+                role = db.query(Role).filter(Role.id == role_id).first()
+                if role:
+                    user_role = UserRole(user_id=user.id, role_id=role_id)
+                    db.add(user_role)
+        
+        # Assign condominiums
+        if user_data.condominium_ids:
+            for condominium_id in user_data.condominium_ids:
+                condominium = db.query(Condominium).filter(Condominium.id == condominium_id).first()
+                if condominium:
+                    user_condo = UserCondominium(user_id=user.id, condominium_id=condominium_id)
+                    db.add(user_condo)
+        
+        # Si el usuario tiene rol titular o residente, crearlo como Resident en cada condominio asignado
+        role_names = set()
+        for role_id in (user_data.role_ids or []):
+            r = db.query(Role).filter(Role.id == role_id).first()
+            if r:
+                role_names.add(r.name)
+        if role_names & {"titular", "residente"} and user_data.condominium_ids:
+            full_name = (user.full_name or user.email or "").strip() or "Sin nombre"
+            for condominium_id in user_data.condominium_ids:
+                existing = db.query(Resident).filter(
+                    Resident.user_id == user.id, Resident.condominium_id == condominium_id
+                ).first()
+                if not existing:
+                    db.add(Resident(
+                        user_id=user.id,
+                        condominium_id=condominium_id,
+                        full_name=full_name,
+                        email=user.email,
+                        phone=None,
+                        document_type=None,
+                        document_number=None,
+                    ))
+        
+        db.commit()
+        db.refresh(user)
+    except Exception as e:
+        db.rollback()
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"[ERROR] Error creating user: {e}")
+        print(f"[ERROR] Details: {error_details}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al crear usuario: {str(e)}"
+        )
     
     return {
         "id": user.id,
@@ -155,7 +206,8 @@ async def create_user(
         "created_at": user.created_at,
         "updated_at": user.updated_at,
         "roles": get_user_roles(db, user.id),
-        "condominiums": get_user_condominiums(db, user.id)
+        "condominiums": get_user_condominiums(db, user.id),
+        "needs_password_change": not bool(user.hashed_password)
     }
 
 
@@ -166,11 +218,15 @@ async def update_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Update user (super admin only)"""
-    if not can_manage_users(current_user):
+    """Update user (super admin or admin only)"""
+    from app.core.permissions import is_super_admin
+    user_roles = [ur.role.name for ur in current_user.user_roles]
+    is_admin = is_super_admin(current_user) or "admin" in user_roles
+    
+    if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only super administrators can update users"
+            detail="Only administrators can update users"
         )
     
     user = db.query(User).filter(User.id == user_id).first()
@@ -222,6 +278,39 @@ async def update_user(
                 user_condo = UserCondominium(user_id=user_id, condominium_id=condominium_id)
                 db.add(user_condo)
     
+    # Si el usuario tiene rol titular o residente, asegurar Resident en cada condominio asignado
+    effective_role_ids = (
+        user_data.role_ids
+        if user_data.role_ids is not None
+        else [ur.role_id for ur in db.query(UserRole).filter(UserRole.user_id == user_id).all()]
+    )
+    effective_condo_ids = (
+        user_data.condominium_ids
+        if user_data.condominium_ids is not None
+        else [uc.condominium_id for uc in db.query(UserCondominium).filter(UserCondominium.user_id == user_id).all()]
+    )
+    role_names = set()
+    for rid in effective_role_ids:
+        r = db.query(Role).filter(Role.id == rid).first()
+        if r:
+            role_names.add(r.name)
+    if role_names & {"titular", "residente"} and effective_condo_ids:
+        full_name = (user.full_name or user.email or "").strip() or "Sin nombre"
+        for condominium_id in effective_condo_ids:
+            existing = db.query(Resident).filter(
+                Resident.user_id == user_id, Resident.condominium_id == condominium_id
+            ).first()
+            if not existing:
+                db.add(Resident(
+                    user_id=user_id,
+                    condominium_id=condominium_id,
+                    full_name=full_name,
+                    email=user.email,
+                    phone=None,
+                    document_type=None,
+                    document_number=None,
+                ))
+    
     db.commit()
     db.refresh(user)
     
@@ -233,7 +322,8 @@ async def update_user(
         "created_at": user.created_at,
         "updated_at": user.updated_at,
         "roles": get_user_roles(db, user.id),
-        "condominiums": get_user_condominiums(db, user.id)
+        "condominiums": get_user_condominiums(db, user.id),
+        "needs_password_change": not bool(user.hashed_password)
     }
 
 
@@ -269,16 +359,67 @@ async def delete_user(
     return None
 
 
+@router.post("/{user_id}/reset-password")
+async def reset_user_password(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Reset user password to a temporary password (super admin or admin only)"""
+    from app.core.permissions import is_super_admin
+    user_roles = [ur.role.name for ur in current_user.user_roles]
+    is_admin = is_super_admin(current_user) or "admin" in user_roles
+    
+    if not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can reset passwords"
+        )
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Generate temporary password (user should change it on first login)
+    import secrets
+    import string
+    temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+    user.hashed_password = get_password_hash(temp_password)
+    
+    db.commit()
+    db.refresh(user)
+    
+    from fastapi.responses import JSONResponse
+    return JSONResponse({
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "is_active": user.is_active,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "updated_at": user.updated_at.isoformat() if user.updated_at else None,
+        "roles": [{"id": r.id, "name": r.name, "description": r.description} for r in get_user_roles(db, user.id)],
+        "condominiums": get_user_condominiums(db, user.id),
+        "temp_password": temp_password  # Include in response for display
+    })
+
+
 @router.get("/roles/all", response_model=List[RoleResponse])
 async def get_all_roles(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Get all available roles"""
-    if not can_manage_users(current_user):
+    from app.core.permissions import is_super_admin
+    user_roles = [ur.role.name for ur in current_user.user_roles]
+    is_admin = is_super_admin(current_user) or "admin" in user_roles
+    
+    if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only super administrators can view roles"
+            detail="Only administrators can view roles"
         )
     
     roles = db.query(Role).all()

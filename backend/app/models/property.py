@@ -22,6 +22,7 @@ class Property(Base):
     condominium = relationship("Condominium", back_populates="properties")
     block = relationship("Block", back_populates="properties")
     property_residents = relationship("PropertyResident", back_populates="property", cascade="all, delete-orphan")
+    administration_invoices = relationship("AdministrationInvoice", back_populates="property", cascade="all, delete-orphan")
 
 
 class PropertyResident(Base):

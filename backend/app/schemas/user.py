@@ -15,11 +15,13 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
+    photo_url: Optional[str] = None
     is_active: Optional[bool] = None
 
 
 class UserResponse(UserBase):
     id: int
+    photo_url: Optional[str] = None
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -49,9 +51,21 @@ class UserWithRoles(UserResponse):
 
 
 class UserCreateAdmin(UserBase):
-    password: str
-    role_ids: List[int] = []
-    condominium_ids: List[int] = []
+  password: Optional[str] = None
+  role_ids: List[int] = []
+  condominium_ids: List[int] = []
+  
+  class Config:
+    # Allow password to be omitted from request
+    json_schema_extra = {
+      "example": {
+        "email": "user@example.com",
+        "full_name": "User Name",
+        "password": None,
+        "role_ids": [1],
+        "condominium_ids": [1]
+      }
+    }
 
 
 class UserUpdateAdmin(BaseModel):
@@ -63,10 +77,18 @@ class UserUpdateAdmin(BaseModel):
     password: Optional[str] = None
 
 
-class UserDetailResponse(UserResponse):
-    roles: List[RoleResponse] = []
-    condominiums: List[dict] = []  # List of condominium info
+class CondominiumInfo(BaseModel):
+    """Condominium with optional property_ids for titular/residente (units the user is associated to)."""
+    id: int
+    name: str
+    property_ids: Optional[List[int]] = None  # Solo para titular/residente: unidades asociadas; [] = ninguna
 
-    class Config:
-        from_attributes = True
+
+class UserDetailResponse(UserResponse):
+  roles: List[RoleResponse] = []
+  condominiums: List[CondominiumInfo] = []  # Condominios; si titular/residente incluye property_ids
+  needs_password_change: bool = False
+
+  class Config:
+      from_attributes = True
 

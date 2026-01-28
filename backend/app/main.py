@@ -4,7 +4,9 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.core.database import engine, Base
 from app.core.config import settings
-from app.api import auth, condominiums, blocks, residents, properties, accounting, space_requests, meetings, documents, notifications, document_attachments, users
+from app.api import auth, condominiums, blocks, residents, properties, accounting, space_requests, meetings, assemblies, documents, notifications, document_attachments, users, profile, administration_invoices
+# Import models to ensure they are registered with Base
+from app.models import assembly, administration_invoice
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -55,12 +57,15 @@ app.include_router(blocks.router, prefix="/api/blocks", tags=["Blocks"])
 app.include_router(residents.router, prefix="/api/residents", tags=["Residents"])
 app.include_router(properties.router, prefix="/api/properties", tags=["Properties"])
 app.include_router(accounting.router, prefix="/api/accounting", tags=["Accounting"])
+app.include_router(administration_invoices.router, prefix="/api/administration-invoices", tags=["Administration Invoices"])
 app.include_router(space_requests.router, prefix="/api/space-requests", tags=["Space Requests"])
 app.include_router(meetings.router, prefix="/api/meetings", tags=["Meetings"])
+app.include_router(assemblies.router, prefix="/api/assemblies", tags=["Assemblies"])
 app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 app.include_router(document_attachments.router, prefix="/api/document-attachments", tags=["Document Attachments"])
 app.include_router(notifications.router, prefix="/api/notifications", tags=["Notifications"])
 app.include_router(users.router, prefix="/api/users", tags=["Users Management"])
+app.include_router(profile.router, prefix="/api/profile", tags=["Profile"])
 
 
 @app.get("/")

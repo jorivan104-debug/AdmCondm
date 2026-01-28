@@ -21,6 +21,8 @@ class CondominiumBase(BaseModel):
     landscape_image_url: Optional[str] = None
     description: Optional[str] = None
     total_units: Optional[int] = None
+    administration_value_type: Optional[str] = None  # 'global' | 'segmentado'
+    administration_value_cop: Optional[int] = None  # Valor en COP cuando type=global
 
 
 class CondominiumCreate(CondominiumBase):
@@ -45,6 +47,8 @@ class CondominiumUpdate(BaseModel):
     landscape_image_url: Optional[str] = None
     description: Optional[str] = None
     total_units: Optional[int] = None
+    administration_value_type: Optional[str] = None  # 'global' | 'segmentado'
+    administration_value_cop: Optional[int] = None  # Valor en COP cuando type=global
 
 
 class CondominiumResponse(CondominiumBase):
