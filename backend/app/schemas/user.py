@@ -22,6 +22,9 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     id: int
     photo_url: Optional[str] = None
+    phone: Optional[str] = None
+    document_type: Optional[str] = None
+    document_number: Optional[str] = None
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -52,6 +55,9 @@ class UserWithRoles(UserResponse):
 
 class UserCreateAdmin(UserBase):
   password: Optional[str] = None
+  phone: Optional[str] = None
+  document_type: Optional[str] = None
+  document_number: Optional[str] = None
   role_ids: List[int] = []
   condominium_ids: List[int] = []
   
@@ -71,6 +77,9 @@ class UserCreateAdmin(UserBase):
 class UserUpdateAdmin(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
+    phone: Optional[str] = None
+    document_type: Optional[str] = None
+    document_number: Optional[str] = None
     is_active: Optional[bool] = None
     role_ids: Optional[List[int]] = None
     condominium_ids: Optional[List[int]] = None

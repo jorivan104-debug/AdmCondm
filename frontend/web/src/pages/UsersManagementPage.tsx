@@ -17,6 +17,10 @@ interface User {
   id: number
   email: string
   full_name: string | null
+  photo_url?: string | null
+  phone?: string | null
+  document_type?: string | null
+  document_number?: string | null
   is_active: boolean
   roles: Role[]
   condominiums: Condominium[]
@@ -25,7 +29,7 @@ interface User {
 }
 
 export default function UsersManagementPage() {
-  const { user } = useAuthStore()
+  const { user, isSuperAdmin } = useAuthStore()
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [condominiums, setCondominiums] = useState<Condominium[]>([])
@@ -35,10 +39,14 @@ export default function UsersManagementPage() {
   const [formData, setFormData] = useState({
     email: '',
     full_name: '',
+    phone: '',
+    document_type: '',
+    document_number: '',
     password: '',
     role_ids: [] as number[],
     condominium_ids: [] as number[],
-    is_active: true
+    is_active: true,
+    photo: null as File | null
   })
 
   useEffect(() => {
@@ -70,20 +78,28 @@ export default function UsersManagementPage() {
       setFormData({
         email: userToEdit.email,
         full_name: userToEdit.full_name || '',
+        phone: userToEdit.phone || '',
+        document_type: userToEdit.document_type || '',
+        document_number: userToEdit.document_number || '',
         password: '',
         role_ids: userToEdit.roles.map(r => r.id),
         condominium_ids: userToEdit.condominiums.map(c => c.id),
-        is_active: userToEdit.is_active
+        is_active: userToEdit.is_active,
+        photo: null
       })
     } else {
       setEditingUser(null)
       setFormData({
         email: '',
         full_name: '',
+        phone: '',
+        document_type: '',
+        document_number: '',
         password: '',
         role_ids: [],
         condominium_ids: [],
-        is_active: true
+        is_active: true,
+        photo: null
       })
     }
     setShowModal(true)
@@ -98,10 +114,12 @@ export default function UsersManagementPage() {
     e.preventDefault()
     try {
       if (editingUser) {
-        // Update user
         const updateData: any = {
           email: formData.email,
           full_name: formData.full_name,
+          phone: formData.phone || null,
+          document_type: formData.document_type || null,
+          document_number: formData.document_number || null,
           role_ids: formData.role_ids,
           condominium_ids: formData.condominium_ids,
           is_active: formData.is_active
@@ -110,15 +128,31 @@ export default function UsersManagementPage() {
           updateData.password = formData.password
         }
         await api.put(`/users/${editingUser.id}`, updateData)
+        if (formData.photo) {
+          const fd = new FormData()
+          fd.append('photo', formData.photo)
+          await api.post(`/users/${editingUser.id}/upload-photo`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          })
+        }
       } else {
-        // Create user
-        await api.post('/users/', {
+        const res = await api.post('/users/', {
           email: formData.email,
           full_name: formData.full_name,
           password: formData.password,
+          phone: formData.phone || null,
+          document_type: formData.document_type || null,
+          document_number: formData.document_number || null,
           role_ids: formData.role_ids,
           condominium_ids: formData.condominium_ids
         })
+        if (formData.photo && res.data?.id) {
+          const fd = new FormData()
+          fd.append('photo', formData.photo)
+          await api.post(`/users/${res.data.id}/upload-photo`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          })
+        }
       }
       handleCloseModal()
       loadData()
@@ -130,15 +164,19 @@ export default function UsersManagementPage() {
   }
 
   const handleDelete = async (userId: number) => {
-    if (!confirm('¿Estás seguro de eliminar este usuario?')) return
+    if (!confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.')) return
     
     try {
       await api.delete(`/users/${userId}`)
       loadData()
-      alert('Usuario eliminado exitosamente')
+      alert('Usuario eliminado correctamente.')
     } catch (error: any) {
       console.error('Error deleting user:', error)
-      alert('Error: ' + (error.response?.data?.detail || error.message))
+      const detail = error.response?.data?.detail
+      const msg = error.response?.status === 403
+        ? 'Solo el superusuario puede eliminar usuarios.'
+        : (typeof detail === 'string' ? detail : error.message)
+      alert('Error: ' + msg)
     }
   }
 
@@ -258,7 +296,7 @@ export default function UsersManagementPage() {
                   >
                     Editar
                   </button>
-                  {u.id !== user?.id && (
+                  {isSuperAdmin() && u.id !== user?.id && (
                     <button
                       onClick={() => handleDelete(u.id)}
                       className="text-red-600 hover:text-red-900"
@@ -293,13 +331,63 @@ export default function UsersManagementPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Nombre Completo</label>
+                  <label className="block text-sm font-medium text-gray-700">Nombre Completo *</label>
                   <input
                     type="text"
                     value={formData.full_name}
                     onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="Nombre completo del usuario"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Teléfono</label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="+57 300 123 4567"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Tipo de Documento</label>
+                  <select
+                    value={formData.document_type}
+                    onChange={(e) => setFormData({ ...formData, document_type: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    <option value="">Seleccionar</option>
+                    <option value="CC">Cédula de Ciudadanía</option>
+                    <option value="CE">Cédula de Extranjería</option>
+                    <option value="NIT">NIT</option>
+                    <option value="Pasaporte">Pasaporte</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Número de Documento</label>
+                  <input
+                    type="text"
+                    value={formData.document_number}
+                    onChange={(e) => setFormData({ ...formData, document_number: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="1234567890"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Foto</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setFormData({ ...formData, photo: e.target.files?.[0] || null })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  />
+                  {formData.photo && (
+                    <p className="mt-1 text-sm text-gray-500">{formData.photo.name}</p>
+                  )}
+                  {editingUser?.photo_url && !formData.photo && (
+                    <p className="mt-1 text-sm text-gray-500">Foto actual asignada. Elige otro archivo para reemplazarla.</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">

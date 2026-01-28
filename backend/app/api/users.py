@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
+from pathlib import Path
+import shutil
 from app.core.database import get_db
+from app.core.config import settings
 from app.core.security import get_password_hash
 from app.core.permissions import can_manage_users, is_super_admin
 from app.models.user import User, UserRole, UserCondominium
@@ -18,6 +21,22 @@ from app.schemas.user import (
 from app.api.auth import get_current_user
 
 router = APIRouter()
+
+# Directorio para fotos de usuarios (admin sube foto de cualquier usuario)
+UPLOAD_DIR = Path(settings.UPLOAD_DIR)
+UPLOAD_DIR.mkdir(exist_ok=True)
+USER_UPLOAD_DIR = UPLOAD_DIR / "users"
+USER_UPLOAD_DIR.mkdir(exist_ok=True)
+
+
+def _save_user_photo(file: UploadFile, target_user_id: int) -> str:
+    """Guarda la foto subida y devuelve la URL."""
+    file_ext = Path(file.filename or "photo").suffix or ".jpg"
+    filename = f"photo_{target_user_id}{file_ext}"
+    file_path = USER_UPLOAD_DIR / filename
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return f"/uploads/users/{filename}"
 
 
 def get_user_roles(db: Session, user_id: int) -> List[RoleResponse]:
@@ -59,6 +78,10 @@ async def get_users(
             "id": user.id,
             "email": user.email,
             "full_name": user.full_name,
+            "photo_url": user.photo_url,
+            "phone": user.phone,
+            "document_type": user.document_type,
+            "document_number": user.document_number,
             "is_active": user.is_active,
             "created_at": user.created_at,
             "updated_at": user.updated_at,
@@ -97,6 +120,10 @@ async def get_user(
         "id": user.id,
         "email": user.email,
         "full_name": user.full_name,
+        "photo_url": user.photo_url,
+        "phone": user.phone,
+        "document_type": user.document_type,
+        "document_number": user.document_number,
         "is_active": user.is_active,
         "created_at": user.created_at,
         "updated_at": user.updated_at,
@@ -141,6 +168,9 @@ async def create_user(
             email=user_data.email,
             hashed_password=hashed_password,  # Can be None for new users
             full_name=user_data.full_name,
+            phone=user_data.phone,
+            document_type=user_data.document_type,
+            document_number=user_data.document_number,
             is_active=True
         )
         db.add(user)
@@ -180,9 +210,9 @@ async def create_user(
                         condominium_id=condominium_id,
                         full_name=full_name,
                         email=user.email,
-                        phone=None,
-                        document_type=None,
-                        document_number=None,
+                        phone=user.phone,
+                        document_type=user.document_type,
+                        document_number=user.document_number,
                     ))
         
         db.commit()
@@ -202,6 +232,10 @@ async def create_user(
         "id": user.id,
         "email": user.email,
         "full_name": user.full_name,
+        "photo_url": user.photo_url,
+        "phone": user.phone,
+        "document_type": user.document_type,
+        "document_number": user.document_number,
         "is_active": user.is_active,
         "created_at": user.created_at,
         "updated_at": user.updated_at,
@@ -249,6 +283,13 @@ async def update_user(
     
     if user_data.full_name is not None:
         user.full_name = user_data.full_name
+    
+    if user_data.phone is not None:
+        user.phone = user_data.phone
+    if user_data.document_type is not None:
+        user.document_type = user_data.document_type
+    if user_data.document_number is not None:
+        user.document_number = user_data.document_number
     
     if user_data.is_active is not None:
         user.is_active = user_data.is_active
@@ -306,9 +347,9 @@ async def update_user(
                     condominium_id=condominium_id,
                     full_name=full_name,
                     email=user.email,
-                    phone=None,
-                    document_type=None,
-                    document_number=None,
+                    phone=user.phone,
+                    document_type=user.document_type,
+                    document_number=user.document_number,
                 ))
     
     db.commit()
@@ -318,6 +359,50 @@ async def update_user(
         "id": user.id,
         "email": user.email,
         "full_name": user.full_name,
+        "photo_url": user.photo_url,
+        "phone": user.phone,
+        "document_type": user.document_type,
+        "document_number": user.document_number,
+        "is_active": user.is_active,
+        "created_at": user.created_at,
+        "updated_at": user.updated_at,
+        "roles": get_user_roles(db, user.id),
+        "condominiums": get_user_condominiums(db, user.id),
+        "needs_password_change": not bool(user.hashed_password)
+    }
+
+
+@router.post("/{user_id}/upload-photo", response_model=UserDetailResponse)
+async def upload_user_photo(
+    user_id: int,
+    photo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Subir foto de un usuario (solo admin o super_admin)."""
+    from app.core.permissions import is_super_admin
+    user_roles = [ur.role.name for ur in current_user.user_roles]
+    is_admin = is_super_admin(current_user) or "admin" in user_roles
+    if not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo administradores pueden subir fotos de usuarios"
+        )
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
+    photo_url = _save_user_photo(photo, user_id)
+    user.photo_url = photo_url
+    db.commit()
+    db.refresh(user)
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "photo_url": user.photo_url,
+        "phone": user.phone,
+        "document_type": user.document_type,
+        "document_number": user.document_number,
         "is_active": user.is_active,
         "created_at": user.created_at,
         "updated_at": user.updated_at,
@@ -354,6 +439,20 @@ async def delete_user(
             detail="User not found"
         )
     
+    # Roles del usuario a eliminar
+    role_names = set()
+    for ur in db.query(UserRole).filter(UserRole.user_id == user_id).all():
+        r = db.query(Role).filter(Role.id == ur.role_id).first()
+        if r:
+            role_names.add(r.name)
+    residents_linked = db.query(Resident).filter(Resident.user_id == user_id).all()
+    if role_names & {"titular", "residente"}:
+        # Si es titular o residente, borrar también los Resident asociados
+        for r in residents_linked:
+            db.delete(r)
+    else:
+        # En otros casos solo desvincular (evita violación de FK)
+        db.query(Resident).filter(Resident.user_id == user_id).update({Resident.user_id: None})
     db.delete(user)
     db.commit()
     return None

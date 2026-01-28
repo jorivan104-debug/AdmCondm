@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 from app.core.database import get_db
-from app.core.permissions import check_condominium_access, Role
+from app.core.permissions import check_condominium_access, Role, is_super_admin
 from app.core.config import settings
 from app.models.property import Property, PropertyResident
 from app.models.condominium import Condominium
@@ -51,9 +51,9 @@ async def create_property(
             detail="Access denied to this condominium"
         )
     
-    # Check if user has admin role
+    # Check if user has admin or super_admin role
     user_roles = [ur.role.name for ur in current_user.user_roles]
-    if Role.ADMIN not in user_roles:
+    if not is_super_admin(current_user) and Role.ADMIN not in user_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can create properties"
@@ -96,9 +96,9 @@ async def create_property_complete(
             detail="Access denied to this condominium"
         )
     
-    # Check if user has admin role
+    # Check if user has admin or super_admin role
     user_roles = [ur.role.name for ur in current_user.user_roles]
-    if Role.ADMIN not in user_roles:
+    if not is_super_admin(current_user) and Role.ADMIN not in user_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can create properties"
@@ -262,9 +262,9 @@ async def update_property(
             detail="Access denied to this property"
         )
     
-    # Check if user has admin role
+    # Check if user has admin or super_admin role
     user_roles = [ur.role.name for ur in current_user.user_roles]
-    if Role.ADMIN not in user_roles:
+    if not is_super_admin(current_user) and Role.ADMIN not in user_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can update properties"
@@ -307,9 +307,9 @@ async def update_property_complete(
             detail="Access denied to this property"
         )
     
-    # Check if user has admin role
+    # Check if user has admin or super_admin role
     user_roles = [ur.role.name for ur in current_user.user_roles]
-    if Role.ADMIN not in user_roles:
+    if not is_super_admin(current_user) and Role.ADMIN not in user_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can update properties"
@@ -416,9 +416,9 @@ async def delete_property(
             detail="Access denied to this property"
         )
     
-    # Check if user has admin role
+    # Check if user has admin or super_admin role
     user_roles = [ur.role.name for ur in current_user.user_roles]
-    if Role.ADMIN not in user_roles:
+    if not is_super_admin(current_user) and Role.ADMIN not in user_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can delete properties"

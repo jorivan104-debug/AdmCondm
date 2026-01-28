@@ -41,8 +41,12 @@ export default function SettingsPage() {
   const [createUserData, setCreateUserData] = useState({
     email: '',
     full_name: '',
+    phone: '',
+    document_type: '',
+    document_number: '',
     role_id: '',
-    condominium_id: ''
+    condominium_id: '',
+    photo: null as File | null
   })
   
   // Filters
@@ -275,24 +279,40 @@ export default function SettingsPage() {
         role_ids: createUserData.role_id ? [parseInt(createUserData.role_id)] : [],
         condominium_ids: createUserData.condominium_id ? [parseInt(createUserData.condominium_id)] : []
       }
-      
-      // Only include full_name if provided
-      if (createUserData.full_name) {
-        payload.full_name = createUserData.full_name
+      if (createUserData.full_name) payload.full_name = createUserData.full_name
+      if (createUserData.phone) payload.phone = createUserData.phone
+      if (createUserData.document_type) payload.document_type = createUserData.document_type
+      if (createUserData.document_number) payload.document_number = createUserData.document_number
+
+      const res = await api.post('/users/', payload)
+      if (createUserData.photo && res.data?.id) {
+        const fd = new FormData()
+        fd.append('photo', createUserData.photo)
+        await api.post(`/users/${res.data.id}/upload-photo`, fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
       }
-      
-      // Don't send password field at all for new users (they'll set it on first login)
-      // The backend will handle None/null password correctly
-      
-      await api.post('/users/', payload)
       setShowCreateUserModal(false)
-      setCreateUserData({ email: '', full_name: '', role_id: '', condominium_id: '' })
+      resetCreateUserForm()
       await loadData()
       alert('Usuario creado exitosamente. El usuario deberá establecer su contraseña en el primer inicio de sesión.')
     } catch (error: any) {
       console.error('Error creating user:', error)
       alert('Error al crear usuario: ' + (error.response?.data?.detail || error.message))
     }
+  }
+
+  const resetCreateUserForm = () => {
+    setCreateUserData({
+      email: '',
+      full_name: '',
+      phone: '',
+      document_type: '',
+      document_number: '',
+      role_id: '',
+      condominium_id: '',
+      photo: null
+    })
   }
 
   if (loading) {
@@ -625,15 +645,15 @@ export default function SettingsPage() {
 
       {/* Create User Modal */}
       {showCreateUserModal && (
-        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full my-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Crear Nuevo Usuario</h3>
                 <button
                   onClick={() => {
                     setShowCreateUserModal(false)
-                    setCreateUserData({ email: '', full_name: '', role_id: '', condominium_id: '' })
+                    resetCreateUserForm()
                   }}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
@@ -657,14 +677,69 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
-                    Nombre Completo
+                    Nombre Completo *
                   </label>
                   <input
                     type="text"
                     value={createUserData.full_name}
                     onChange={(e) => setCreateUserData({ ...createUserData, full_name: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder="Nombre completo del usuario"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
+                    Teléfono
+                  </label>
+                  <input
+                    type="tel"
+                    value={createUserData.phone}
+                    onChange={(e) => setCreateUserData({ ...createUserData, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder="+57 300 123 4567"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
+                    Tipo de Documento
+                  </label>
+                  <select
+                    value={createUserData.document_type}
+                    onChange={(e) => setCreateUserData({ ...createUserData, document_type: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  >
+                    <option value="">Seleccionar</option>
+                    <option value="CC">Cédula de Ciudadanía</option>
+                    <option value="CE">Cédula de Extranjería</option>
+                    <option value="NIT">NIT</option>
+                    <option value="Pasaporte">Pasaporte</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
+                    Número de Documento
+                  </label>
+                  <input
+                    type="text"
+                    value={createUserData.document_number}
+                    onChange={(e) => setCreateUserData({ ...createUserData, document_number: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    placeholder="1234567890"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
+                    Foto
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setCreateUserData({ ...createUserData, photo: e.target.files?.[0] || null })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  />
+                  {createUserData.photo && (
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{createUserData.photo.name}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
@@ -709,7 +784,7 @@ export default function SettingsPage() {
                   <button
                     onClick={() => {
                       setShowCreateUserModal(false)
-                      setCreateUserData({ email: '', full_name: '', role_id: '', condominium_id: '' })
+                      resetCreateUserForm()
                     }}
                     className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-500"
                   >
